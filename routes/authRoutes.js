@@ -2,7 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 
-// Import your auth middleware and AI controller functions
+
 const authMiddleware = require('../middlewares/auth');
 const { register, login } = require('../controllers/authController');
 const { generateDescription } = require('../controllers/aiController');

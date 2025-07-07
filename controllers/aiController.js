@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const Task = require('../models/Task'); // Correctly imports the Task model
-const mongoose = require('mongoose'); // <-- Global mongoose import for this controller
+const Task = require('../models/Task'); 
+const mongoose = require('mongoose'); 
 
 // Initialize Gemini with your API key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
