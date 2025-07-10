@@ -1,83 +1,68 @@
-// server/controllers/taskController.js
 const Task = require('../models/Task');
 const Audit = require('../models/Audit');
-const mongoose = require('mongoose'); // Make sure this is imported if not already
+const mongoose = require('mongoose'); 
 const moment = require('moment'); 
 
-// ... (other imports) ...
 exports.updateTask = async (req, res) => {
     try {
         const userIdFromToken = new mongoose.Types.ObjectId(req.user.id);
         const { id } = req.params;
-        let updates = req.body; // Use 'let' because we might modify it
+        let updates = req.body; 
 
-        // Fetch the existing task to check its current status
         const existingTask = await Task.findOne({ _id: id, user: userIdFromToken });
 
         if (!existingTask) {
             return res.status(404).json({ message: 'Task not found or unauthorized' });
         }
 
-        // If the status is changing TO 'completed' AND it wasn't completed before, set completedAt
         if (updates.status === 'completed' && existingTask.status !== 'completed') {
-            updates.completedAt = moment().toDate(); // Set completedAt to current date/time
+            updates.completedAt = moment().toDate(); 
             console.log(`[TaskController] updateTask: Task ${id} marked completed. Setting completedAt: ${updates.completedAt}`);
         }
-        // If the status is changing FROM 'completed' (e.g., to 'pending'), clear completedAt
         else if (updates.status === 'pending' && existingTask.status === 'completed') {
-            updates.completedAt = null; // Clear completedAt if task is no longer completed
+            updates.completedAt = null;
             console.log(`[TaskController] updateTask: Task ${id} changed to pending. Clearing completedAt.`);
         }
-        // If status remains completed, but completedAt might be missing from old data, set it
         else if (updates.status === 'completed' && !existingTask.completedAt) {
             updates.completedAt = moment().toDate();
             console.log(`[TaskController] updateTask: Task ${id} was completed but missing completedAt. Setting it now: ${updates.completedAt}`);
         }
-        // If the task is already completed and no change in status, or status is pending and not changing, keep existing completedAt or null
 
         const updatedTask = await Task.findOneAndUpdate(
-            { _id: id, user: userIdFromToken }, // Query by task ID and user
-            updates, // Pass the potentially modified updates object
-            { new: true } // Return the updated document
+            { _id: id, user: userIdFromToken }, 
+            updates, 
+            { new: true } 
         );
 
         await Audit.create({ action: 'UPDATE', taskId: updatedTask._id, userId: req.user.id });
         res.json(updatedTask);
     } catch (err) {
         console.error("Error updating task:", err);
-        res.status(500).json({ message: 'Server error updating task' }); // Changed to 500 for general server error
+        res.status(500).json({ message: 'Server error updating task' }); 
     }
 };
 
 
 exports.getTasks = async (req, res) => {
     try {
-        const userIdFromToken = new mongoose.Types.ObjectId(req.user.id); // From auth middleware
-        // console.log(`[TaskController] getTasks: userIdFromToken = ${userIdFromToken}`); // NEW LOG
-        const { search, status, category, dueDate } = req.query; // Get filters from query params
-        // console.log(`[TaskController] getTasks: Filters received: search=<span class="math-inline">\{search\}, status\=</span>{status}, category=<span class="math-inline">\{category\}, dueDate\=</span>{dueDate}`); // NEW LOG
-
-        let query = { user: userIdFromToken }; // Use 'user' field as per schema
-
-        // Apply search filter (by name or description)
+        const userIdFromToken = new mongoose.Types.ObjectId(req.user.id); 
+        const { search, status, category, dueDate } = req.query; 
+        let query = { user: userIdFromToken }; 
         if (search) {
             query.$or = [
-                { name: { $regex: search, $options: 'i' } }, // Case-insensitive search
+                { name: { $regex: search, $options: 'i' } }, 
                 { description: { $regex: search, $options: 'i' } },
             ];
         }
 
-        // Apply status filter
-        if (status && status !== 'all') { // Ensure 'all' is handled to not filter
+        if (status && status !== 'all') {
             query.status = status;
         }
 
-        // Apply category filter
-        if (category && category !== 'all') { // Ensure 'all' is handled to not filter
+        if (category && category !== 'all') { 
             query.category = category;
         }
 
-        // Apply due date filter
         if (dueDate) {
             const now = moment();
             if (dueDate === 'today') {
@@ -85,23 +70,21 @@ exports.getTasks = async (req, res) => {
                     $gte: now.startOf('day').toDate(),
                     $lte: now.endOf('day').toDate(),
                 };
-                query.status = 'pending'; // Assume 'due today' implies pending
+                query.status = 'pending'; 
             } else if (dueDate === 'upcoming') {
                 query.dueDate = {
-                    $gte: now.endOf('day').toDate(), // From end of today onwards
+                    $gte: now.endOf('day').toDate(), 
                 };
                 query.status = 'pending';
             } else if (dueDate === 'overdue') {
                 query.dueDate = {
-                    $lt: now.startOf('day').toDate(), // Before start of today
+                    $lt: now.startOf('day').toDate(), 
                 };
-                query.status = 'pending'; // Assume 'overdue' implies pending
+                query.status = 'pending'; 
             }
         }
 
-        // console.log(`[TaskController] getTasks: Final Mongoose query:`, query); // NEW LOG
-        const tasks = await Task.find(query).sort({ createdAt: -1 }); // Sort by newest first
-        // console.log(`[TaskController] getTasks: Found ${tasks.length} tasks.`); // NEW LOG
+        const tasks = await Task.find(query).sort({ createdAt: -1 }); 
         res.json(tasks);
     } catch (err) {
         console.error('Error fetching tasks:', err);

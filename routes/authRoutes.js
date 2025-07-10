@@ -6,9 +6,13 @@ const router = express.Router();
 const authMiddleware = require('../middlewares/auth');
 const { register, login } = require('../controllers/authController');
 const { generateDescription } = require('../controllers/aiController');
+const { adminRegister, adminLogin } = require('../controllers/adminAuthController');
 
 router.post('/register', register);
 router.post('/login', login);
+
+router.post('/adminRegister', adminRegister);
+router.post('/adminLogin', adminLogin);
 
 // Protect the generate-description route
 router.post('/generate-description', authMiddleware, generateDescription);

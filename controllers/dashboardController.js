@@ -1,28 +1,18 @@
-// server/controllers/dashboardController.js
 const Task = require('../models/Task');
 const moment = require('moment');
-const mongoose = require('mongoose'); // Import mongoose for ObjectId conversion
+const mongoose = require('mongoose'); 
 
-/**
- * Fetches overall dashboard statistics for the authenticated user.
- * Includes total, completed, pending, due today, and overdue tasks.
- */
 exports.getDashboardStats = async (req, res) => {
     try {
-        // Convert user ID string from JWT to MongoDB ObjectId for querying
         const userIdAsObjectId = new mongoose.Types.ObjectId(req.user.id);
         const now = moment();
 
-        // Count total tasks for the user
         const totalTasks = await Task.countDocuments({ user: userIdAsObjectId });
 
-        // Count completed tasks for the user
         const completedTasks = await Task.countDocuments({ user: userIdAsObjectId, status: 'completed' });
 
-        // Count pending tasks for the user
         const pendingTasks = await Task.countDocuments({ user: userIdAsObjectId, status: 'pending' });
 
-        // Count tasks due today that are still pending
         const dueTodayTasks = await Task.countDocuments({
             user: userIdAsObjectId,
             status: 'pending',
@@ -32,21 +22,18 @@ exports.getDashboardStats = async (req, res) => {
             },
         });
 
-        // Count overdue tasks that are still pending
         const overdueTasks = await Task.countDocuments({
             user: userIdAsObjectId,
             status: 'pending',
-            dueDate: { $lt: now.startOf('day').toDate() }, // Due date is before the start of today
+            dueDate: { $lt: now.startOf('day').toDate() },
         });
 
-        // Calculate completion rate, handling division by zero
         const completionRate = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
 
-        // Send the aggregated statistics as JSON response
         res.json({
             totalTasks,
             completedTasks,
-            completionRate: parseFloat(completionRate.toFixed(2)), // Format to 2 decimal places
+            completionRate: parseFloat(completionRate.toFixed(2)), 
             dueTodayTasks,
             overdueTasks,
         });
@@ -56,9 +43,7 @@ exports.getDashboardStats = async (req, res) => {
     }
 };
 
-/**
- * Fetches counts of completed tasks per day for the last 7 days for charting.
- */
+
 exports.getTasksByDate = async (req, res) => {
     try {
         const userIdAsObjectId = new mongoose.Types.ObjectId(req.user.id);
@@ -99,29 +84,24 @@ exports.getTasksByDate = async (req, res) => {
     }
 };
 
-/**
- * Fetches the distribution of tasks across different categories for charting.
- */
+
 exports.getTaskCategoryDistribution = async (req, res) => {
     try {
-        // Convert user ID string from JWT to MongoDB ObjectId
         const userIdAsObjectId = new mongoose.Types.ObjectId(req.user.id);
 
-        // Aggregate tasks by category
         const categoryCounts = await Task.aggregate([
-            { $match: { user: userIdAsObjectId } }, // Match by correct user field
+            { $match: { user: userIdAsObjectId } }, 
             { $group: {
-                _id: "$category", // Group by category field
-                count: { $sum: 1 } // Count tasks per category
+                _id: "$category", 
+                count: { $sum: 1 } 
             }},
             { $project: {
-                _id: 0, // Exclude _id from output
-                label: "$_id", // Rename _id to label for chart compatibility
-                data: "$count" // Rename count to data for chart compatibility
+                _id: 0, 
+                label: "$_id", 
+                data: "$count" 
             }}
         ]);
 
-        // Extract labels and data arrays for the chart
         const labels = categoryCounts.map(item => item.label);
         const data = categoryCounts.map(item => item.data);
 
@@ -132,24 +112,20 @@ exports.getTaskCategoryDistribution = async (req, res) => {
     }
 };
 
-/**
- * Fetches tasks that are due today and are still pending.
- */
+
 exports.getTasksDueToday = async (req, res) => {
     try {
-        // Convert user ID string from JWT to MongoDB ObjectId
         const userIdAsObjectId = new mongoose.Types.ObjectId(req.user.id);
         const now = moment();
 
-        // Find pending tasks due today for the user
         const tasks = await Task.find({
-            user: userIdAsObjectId, // Match by correct user field
+            user: userIdAsObjectId, 
             status: 'pending',
             dueDate: {
-                $gte: now.startOf('day').toDate(), // From start of today
-                $lte: now.endOf('day').toDate(),   // To end of today
+                $gte: now.startOf('day').toDate(), 
+                $lte: now.endOf('day').toDate(),   
             },
-        }).sort({ dueDate: 1 }); // Sort by due date ascending
+        }).sort({ dueDate: 1 });
 
         res.json(tasks);
     } catch (error) {
@@ -158,17 +134,13 @@ exports.getTasksDueToday = async (req, res) => {
     }
 };
 
-/**
- * Fetches a limited number of the most recently created or updated tasks.
- */
+
 exports.getRecentTasks = async (req, res) => {
     try {
-        // Convert user ID string from JWT to MongoDB ObjectId
         const userIdAsObjectId = new mongoose.Types.ObjectId(req.user.id);
         
-        // Find tasks for the user, sort by latest update/creation, and limit to 5
-        const recentTasks = await Task.find({ user: userIdAsObjectId }) // Match by correct user field
-                                     .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recent update, then creation
+        const recentTasks = await Task.find({ user: userIdAsObjectId }) 
+                                     .sort({ updatedAt: -1, createdAt: -1 }) 
                                      .limit(5); // Limit to 5 tasks
 
         res.json(recentTasks);

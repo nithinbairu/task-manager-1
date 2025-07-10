@@ -1,32 +1,24 @@
-
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const passport = require('passport');
 const session = require('express-session');
-
-
 dotenv.config();
-
-
 require('./config/passport');
-
-
 const authRoutes = require('./routes/authRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const aiRoutes = require('./routes/aiRoutes'); 
 const dashboardRoutes = require('./routes/dashboardRoutes'); 
-
+const adminDashboardRoute = require('./routes/adminDashboardRoute');
+const adminUserRoutes = require('./routes/adminUserRoutes');
 const app = express();
-
 
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true
 }));
 app.use(express.json()); 
-
 
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -35,16 +27,13 @@ app.use(session({
     cookie: { maxAge: 1000 * 60 * 60 * 24 } 
 }));
 
-
 app.use(passport.initialize());
 app.use(passport.session());
-
 
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
-
 
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -58,10 +47,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/ai', aiRoutes);         
 app.use('/api/dashboard', dashboardRoutes); 
+app.use('/api/admin', adminDashboardRoute);
+app.use('/api/admin', adminUserRoutes);
 app.get('/', (req, res) => {
     res.send('TaskWise AI Backend API is running!');
 });
-
 
 app.use((err, req, res, next) => {
     console.error(err.stack);
